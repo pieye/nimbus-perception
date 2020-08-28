@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="nimbus_example_c" type="example" name="example" output="screen" required="true"> 
+         <remap from="pointcloud" to="/nimbus/pointcloud"/>
+    </node>
+</launch>
