@@ -1,8 +1,10 @@
 <launch>
+<!--
     <include file="$(find nimbus_3d_driver)/launch/nimbus.launch" />
+-->
     <arg name="config_file_pose" default="/home/pi/catkin_ws/src/nimbus-perception/nimbus_pose/config/default.yaml"/>
     <node 
         pkg="nimbus_pose" type="nimbus_pose" name="nimbus_pose" output="screen" required="true"> 
         <rosparam command="load" file="$(arg config_file_pose)" />
     </node>
-</launch>
+</launch>   

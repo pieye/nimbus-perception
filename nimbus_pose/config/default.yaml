@@ -1,5 +1,9 @@
 #Path to tflite model
 model_path: '/home/pi/catkin_ws/src/nimbus-perception/nimbus_pose/posenet_mobilenet_v1_100_257x257_multi_kpt_stripped.tflite'
 
-#Minimum confidence -1.0 - 1.0
-min_confidence: -1.0
+#Minimum confidence -1.0 - 1.0 (Don't go below 0.01)
+min_confidence: 0.05
+
+#posenet is not pixel accurate, this can cause missing the object and showing wrong distance
+#--> therefore take the shortest depth in a window arraound the keypoint (e.g. 6 pixel)
+windows_size: 6

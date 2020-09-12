@@ -98,6 +98,8 @@ void detect_in_cloud(Mat &src, const PointCloud::ConstPtr& cloud){
     static Point location_2d[17];
     float min_confidence;
     ros::param::get("/nimbus_pose/min_confidence", min_confidence);
+    int windows_size;
+    ros::param::get("/nimbus_pose/windows_size", windows_size);
 
     prepare_image(interpreter->typed_tensor<float>(interpreter->inputs()[0]), src);
 
@@ -129,42 +131,56 @@ void detect_in_cloud(Mat &src, const PointCloud::ConstPtr& cloud){
 
     //RVIZ Visualisation - 3D Sceleton + 2d image
     visualization_msgs::MarkerArray ma; 
+    //Iterate over all keypoints
     for(i=0;i<17;i++){
-        visualization_msgs::Marker marker;
-        marker.header.frame_id = "nimbus";
-        marker.header.stamp = ros::Time();
-        marker.ns = "nimbus_pose";
-        marker.id = i;
-        marker.type = visualization_msgs::Marker::SPHERE;
-        marker.action = visualization_msgs::Marker::ADD;
-        marker.color.a = 0.0;
-        marker.pose.position.x = 0;
-        marker.pose.position.y = 0;
-        marker.pose.position.z = 0;
-        marker.pose.orientation.x = 0.0;
-        marker.pose.orientation.y = 0.0;
-        marker.pose.orientation.z = 0.0;
-        marker.pose.orientation.w = 1.0;
-  
-        if(confidence[i]>min_confidence){
-            circle(src,location_2d[i],4,Scalar(50, 175, 215),FILLED);
-            if(location_2d[i].y >= 0 && location_2d[i].x >= 0 && location_2d[i].y <= IMG_HEIGHT && location_2d[i].x <= IMG_WIDTH 
-                && cloud->points[location_2d[i].x + IMG_WIDTH*location_2d[i].y].x > -100 && cloud->points[location_2d[i].x + IMG_WIDTH*location_2d[i].y].x < 100){
-                    marker.color.a = 1.0;
-                    /////////////////////////////
-                    //Here is the 3D Pose data!//
-                    /////////////////////////////
-                    marker.pose.position.x = cloud->points[location_2d[i].x + IMG_WIDTH*location_2d[i].y].x;
-                    marker.pose.position.y = cloud->points[location_2d[i].x + IMG_WIDTH*location_2d[i].y].y;
-                    marker.pose.position.z = cloud->points[location_2d[i].x + IMG_WIDTH*location_2d[i].y].z;
+        //Don't draw nose and ears
+        if(i != NOSE && i != RIGHT_EAR && i != LEFT_EAR){
+            visualization_msgs::Marker marker;
+            marker.header.frame_id = "nimbus";
+            marker.header.stamp = ros::Time();
+            marker.ns = "nimbus_pose";
+            marker.id = i;
+            marker.type = visualization_msgs::Marker::SPHERE;
+            marker.action = visualization_msgs::Marker::ADD;
+            marker.color.a = 0.0;
+            marker.pose.position.x = 0;
+            marker.pose.position.y = 0;
+            marker.pose.position.z = 0;
+            marker.pose.orientation.x = 0.0;
+            marker.pose.orientation.y = 0.0;
+            marker.pose.orientation.z = 0.0;
+            marker.pose.orientation.w = 1.0;
+    
+            if(confidence[i]>min_confidence){
+                circle(src,location_2d[i],4,Scalar(50, 175, 215),FILLED);
+                if(location_2d[i].y >= 0 && location_2d[i].x >= 0 && location_2d[i].y <= IMG_HEIGHT && location_2d[i].x <= IMG_WIDTH 
+                    && cloud->points[location_2d[i].x + IMG_WIDTH*location_2d[i].y].x > -100 && cloud->points[location_2d[i].x + IMG_WIDTH*location_2d[i].y].x < 100){
+                        marker.color.a = 1.0;
+                        float temp_depth = cloud->points[location_2d[i].x + IMG_WIDTH*location_2d[i].y].z;
+                        for(int ii=-window_size/2;ii<window_size/2;ii++){
+                            for(int jj=-window_size/2;jj<window_size/2;jj++){
+                                std::cout << cloud->points[location_2d[i].x+ii + IMG_WIDTH*location_2d[i].y+jj].z << std::endl;
+                                if(cloud->points[location_2d[i].x+ii + IMG_WIDTH*location_2d[i].y+jj].z < temp_depth)
+                                    temp_depth = cloud->points[location_2d[i].x+ii + IMG_WIDTH*location_2d[i].y+jj].z;
+                            }
+                        }
+                        
+                        ///////////////////////////////////////////////////////////////////////////////////////////
+                        //                               Here is the 3D Pose data!                               //
+                        marker.pose.position.x = cloud->points[location_2d[i].x + IMG_WIDTH*location_2d[i].y].x;
+                        marker.pose.position.y = cloud->points[location_2d[i].x + IMG_WIDTH*location_2d[i].y].y;
+                        marker.pose.position.z = temp_depth;
+                        ///////////////////////////////////////////////////////////////////////////////////////////
+                }
             }
+            marker.color.r = 0.196;
+            marker.color.g = 0.686;
+            marker.color.b = 0.843;
+            marker.scale.x = marker.scale.y = marker.scale.z = 0.15;
+            ma.markers.push_back(marker);
         }
 
-        marker.color.r = 0.196;
-        marker.color.g = 0.686;
-        marker.color.b = 0.843;
-        marker.scale.x = marker.scale.y = marker.scale.z = 0.15;
-        ma.markers.push_back(marker);
+        
     }
     vis_pub.publish(ma);
 
