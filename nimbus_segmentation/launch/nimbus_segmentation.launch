@@ -1,0 +1,11 @@
+<launch>
+<!--
+    <include file="$(find nimbus_3d_driver)/launch/nimbus.launch" />
+-->
+    <arg name="config_file_pose" default="/home/pi/catkin_ws/src/nimbus-perception/nimbus_segmentation/config/default.yaml"/>
+    <node pkg="nimbus_segmentation" type="nimbus_segmentation" name="nimbus_segmentation" output="screen" required="true"> 
+        <rosparam command="load" file="$(arg config_file_pose)" />
+        <remap from="segmented_pointcloud" to="/nimbus/segmented_pointcloud"/> 
+        <remap from="nimbus_segmentation" to="/nimbus/nimbus_segmentation"/>
+    </node>
+</launch>   

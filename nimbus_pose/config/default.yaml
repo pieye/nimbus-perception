@@ -6,4 +6,4 @@ min_confidence: 0.05
 
 #posenet is not pixel accurate, this can cause missing the object and showing wrong distance
 #--> therefore take the shortest depth in a window arraound the keypoint (e.g. 6 pixel)
-windows_size: 6
+window_size: 6

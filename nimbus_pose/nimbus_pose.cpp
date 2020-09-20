@@ -98,8 +98,8 @@ void detect_in_cloud(Mat &src, const PointCloud::ConstPtr& cloud){
     static Point location_2d[17];
     float min_confidence;
     ros::param::get("/nimbus_pose/min_confidence", min_confidence);
-    int windows_size;
-    ros::param::get("/nimbus_pose/windows_size", windows_size);
+    int window_size;
+    ros::param::get("/nimbus_pose/window_size", window_size);
 
     prepare_image(interpreter->typed_tensor<float>(interpreter->inputs()[0]), src);
 
@@ -133,7 +133,7 @@ void detect_in_cloud(Mat &src, const PointCloud::ConstPtr& cloud){
     visualization_msgs::MarkerArray ma; 
     //Iterate over all keypoints
     for(i=0;i<17;i++){
-        //Don't draw nose and ears
+        //Don't draw nose and ears (they're very unaccurate)
         if(i != NOSE && i != RIGHT_EAR && i != LEFT_EAR){
             visualization_msgs::Marker marker;
             marker.header.frame_id = "nimbus";
