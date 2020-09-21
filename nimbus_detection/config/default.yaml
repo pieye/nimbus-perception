@@ -1,9 +1,8 @@
 #Path to tflite model
-model_path: '/home/pi/catkin_ws/src/nimbus-perception/nimbus_detection/'
+model_path: '/home/pi/catkin_ws/src/nimbus-perception/nimbus_detection/detect.tflite'
 
 #Minimum confidence 0 - 1 (0.25 good default value)
-min_confidence: 0.25
+min_confidence: 0.6
 
-#posenet is not pixel accurate, this can cause missing the object and showing wrong distance
-#--> therefore take the shortest depth in a window arraound the keypoint (e.g. 6 pixel)
-window_size: 6
+#confidence bounds of 3d cluster (1-sgima: only use 68% of the points arround mean for the 3d box)
+sigma: 1

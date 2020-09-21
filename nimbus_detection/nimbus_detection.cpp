@@ -15,7 +15,6 @@
 #include <iostream>
 #include <opencv2/core/ocl.hpp>
 
-
 //Tensorflow
 #include "tensorflow/lite/builtin_op_data.h"
 #include "tensorflow/lite/interpreter.h"
@@ -39,18 +38,174 @@
 
 using namespace cv;
 using namespace std;
-using namespace tflite;
 
 const size_t width = 300;
 const size_t height = 300;
 
-dnn::Net net;
-std::vector<std::string> Names;
+std::vector<std::string> Labels;
+std::unique_ptr<tflite::Interpreter> interpreter;
+
+int marker_counter = 0;
 
 typedef pcl::PointCloud<pcl::PointXYZI> PointCloud;
 ros::Publisher pub;
 ros::Publisher pub_img;
 ros::Publisher vis_pub;
+
+visualization_msgs::Marker DeleteMarker(){
+    visualization_msgs::Marker deleteMarker;
+    if(marker_counter > 0){
+        deleteMarker.header.frame_id = "nimbus";
+        deleteMarker.header.stamp = ros::Time();
+        deleteMarker.ns = "nimbus_detection";
+        deleteMarker.id = marker_counter;
+        deleteMarker.ns = "points";
+        deleteMarker.type = visualization_msgs::Marker::CUBE;
+        deleteMarker.action = visualization_msgs::Marker::DELETE;
+        deleteMarker.color.a = 0.0;
+        marker_counter--;
+    }
+    return deleteMarker;
+}
+
+visualization_msgs::Marker addText(float x, float y, float z, float depth, int id, string Name){
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "nimbus";
+    marker.header.stamp = ros::Time();
+    marker.ns = "nimbus_detection";
+    marker.id = id;
+    marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.color.a = 1.0;
+    marker.pose.position.x = x;
+    marker.pose.position.y = y;
+    marker.pose.position.z = z-depth/2;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+
+    marker.text = Name;
+
+    marker.scale.x = 0.5;
+    marker.scale.y = 0.5;
+    marker.scale.z = 0.2;
+
+    marker.color.r = 1.0f;
+    marker.color.g = 0.0f;
+    marker.color.b = 0.0f;
+    marker.color.a = 1.0;
+
+    return marker;
+}
+
+//Calculate mean and standard deviation of bounding box 
+//and use 1-sigma confidence bounds to approximate cluster size
+visualization_msgs::Marker Calculate3DBoundingBox(int id, float y1, float x1, float y2, float x2, const PointCloud::ConstPtr& cloud){
+    float sigma;
+    ros::param::get("/nimbus_detection/sigma", sigma);
+
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "nimbus";
+    marker.header.stamp = ros::Time();
+    marker.ns = "nimbus_detection";
+    marker.id = id;
+    marker.type = visualization_msgs::Marker::CUBE;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.color.a = 0.7;
+    marker.pose.position.x = 0;
+    marker.pose.position.y = 0;
+    marker.pose.position.z = 0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+
+    float sum_x = 0;
+    float sum_y = 0;
+    float sum_z = 0;
+
+    float var_x = 0;
+    float var_y = 0;
+    float var_z = 0;
+
+    float sd_x = 0;
+    float sd_y = 0;
+    float sd_z = 0;
+
+    float max = (y2-y1)*(x2-x1);
+    for(int i = x1; i < (x2); i++){
+        for(int j = y1; j < (y2); j++){
+            if(isnan(cloud->points[i + IMG_WIDTH*j].x) || isnan(cloud->points[i + IMG_WIDTH*j].y) || isnan(cloud->points[i + IMG_WIDTH*j].z)){
+                max--;
+            }
+            else{
+                sum_x += cloud->points[i + IMG_WIDTH*j].x;
+                sum_y += cloud->points[i + IMG_WIDTH*j].y;
+                sum_z += cloud->points[i + IMG_WIDTH*j].z;
+            }
+        }
+    }
+
+    //calc mean
+    float mean_x = sum_x/max;
+    float mean_y = sum_y/max;
+    float mean_z = sum_z/max;
+
+    max = (y2-y1)*(x2-x1);
+    for(int i = x1; i < (x2); i++){
+        for(int j = y1; j < (y2); j++){
+            if(isnan(cloud->points[i + IMG_WIDTH*j].x) || isnan(cloud->points[i + IMG_WIDTH*j].y) || isnan(cloud->points[i + IMG_WIDTH*j].z)){
+                max--;
+            }
+            else{
+                var_x += (cloud->points[i + IMG_WIDTH*j].x - mean_x) * (cloud->points[i + IMG_WIDTH*j].x - mean_x);
+                var_y += (cloud->points[i + IMG_WIDTH*j].y - mean_y) * (cloud->points[i + IMG_WIDTH*j].y - mean_y);
+                var_z += (cloud->points[i + IMG_WIDTH*j].z - mean_z) * (cloud->points[i + IMG_WIDTH*j].z - mean_z);
+            }
+        }
+    }
+
+    //calc variance
+    var_x /= sum_x;
+    var_y /= sum_y;
+    var_z /= sum_z;
+
+    std::cout << "sum_x" << sum_x <<  "var_x" << var_x << std::endl;
+
+    //variance negative?????
+    //problem here --> check math
+    //
+    //
+    //
+    //bounding boxes are rotated wrong??? Or variance is wrong?!
+
+   
+    if(isnan(sum_x) || isnan(sum_y) || isnan(sum_z)){
+            marker.color.a = 0.0;
+            std::cout << "NAN!" << std::endl;
+    }
+    else{
+        //bounding box center is mean of pointcloud distribution
+        marker.pose.position.x = mean_x;
+        marker.pose.position.y = mean_y;
+        marker.pose.position.z = mean_z;
+    }
+    //pieye colors
+    marker.color.r = 0.196;
+    marker.color.g = 0.686;
+    marker.color.b = 0.843;
+
+    //calc standard deviation and use it for the bounding box size
+    marker.scale.x = sqrt(var_x)*sigma;
+    marker.scale.y = sqrt(var_y)*sigma;
+    marker.scale.z = sqrt(var_z)*sigma;
+
+    std::cout << "x " << sqrt(var_x) << "    y " << sqrt(var_y) << "    z " << sqrt(var_z) <<  std::endl;
+
+
+    return marker;
+}
 
 static bool readCOCOLabels(std::string fileName){
 	//Open the File
@@ -62,7 +217,7 @@ static bool readCOCOLabels(std::string fileName){
 	while (std::getline(in, str))
 	{
 		// Line contains string of length > 0 then save it in vector
-		if(str.size()>0) Names.push_back(str);
+		if(str.size()>0) Labels.push_back(str);
 	}
 	// Close The File
 	in.close();
@@ -74,40 +229,63 @@ static bool readCOCOLabels(std::string fileName){
 //
 void detect_in_cloud(Mat &src, const PointCloud::ConstPtr& cloud){
     float min_confidence = 0.25;
-    ros::param::get("/nimbus_pose/min_confidence", min_confidence);
-    int window_size;
-    ros::param::get("/nimbus_pose/window_size", window_size);
+    ros::param::get("/nimbus_detection/min_confidence", min_confidence);
+    
+    Mat image;
+    int cam_width =src.cols;
+    int cam_height=src.rows;
 
-    Mat blobimg = dnn::blobFromImage(src, 1.0, Size(300, 300), 0.0, true);
-	net.setInput(blobimg);
-	Mat detection = net.forward("detection_out");
-	Mat detectionMat(detection.size[2], detection.size[3], CV_32F, detection.ptr<float>());
+    //copy image to input as input tensor
+    cv::resize(src, image, Size(width,height));
+    memcpy(interpreter->typed_input_tensor<uchar>(0), image.data, image.total() * image.elemSize());
 
-	for(int i=0; i<detectionMat.rows; i++){
-		float detect_confidence = detectionMat.at<float>(i, 2);
+    interpreter->SetAllowFp16PrecisionForFp32(true);
+    interpreter->SetNumThreads(4);      
 
-		if(detect_confidence > min_confidence){
-			size_t det_index = (size_t)detectionMat.at<float>(i, 1);
-			float x1 = detectionMat.at<float>(i, 3)*src.cols;
-			float y1 = detectionMat.at<float>(i, 4)*src.rows;
-			float x2 = detectionMat.at<float>(i, 5)*src.cols;
-			float y2 = detectionMat.at<float>(i, 6)*src.rows;
-			Rect rec((int)x1, (int)y1, (int)(x2 - x1), (int)(y2 - y1));
-			rectangle(src,rec, Scalar(0, 0, 255), 1, 8, 0);
-			putText(src, format("%s", Names[det_index].c_str()), Point(x1, y1-5) ,FONT_HERSHEY_SIMPLEX,0.5, Scalar(0, 0, 255), 1, 8, 0);
-		}
-	}
-}
+    //run the model
+    interpreter->Invoke();      
+
+    const float* detection_locations = interpreter->tensor(interpreter->outputs()[0])->data.f;
+    const float* detection_classes=interpreter->tensor(interpreter->outputs()[1])->data.f;
+    const float* detection_scores = interpreter->tensor(interpreter->outputs()[2])->data.f;
+    const int    num_detections = *interpreter->tensor(interpreter->outputs()[3])->data.f;
+
+    int temp_marker_count = 0;
+    visualization_msgs::MarkerArray ma; 
+    for(int i = 0; i < num_detections; i++){
+        if(detection_scores[i] > min_confidence){
+            int  det_index = (int)detection_classes[i]+1;
+            float y1=detection_locations[4*i  ]*cam_height;
+            float x1=detection_locations[4*i+1]*cam_width;
+            float y2=detection_locations[4*i+2]*cam_height;
+            float x2=detection_locations[4*i+3]*cam_width;
+
+            Rect rec((int)x1, (int)y1, (int)(x2 - x1), (int)(y2 - y1));
+            rectangle(src,rec, Scalar(0, 0, 255), 1, 8, 0);
+            putText(src, format("%s", Labels[det_index].c_str()), Point(x1, y1-5) ,FONT_HERSHEY_SIMPLEX,0.5, Scalar(0, 0, 255), 1, 8, 0);
+
+            visualization_msgs::Marker marker = Calculate3DBoundingBox(temp_marker_count, y1, x1, y2, x2, cloud);
+            ma.markers.push_back(marker);
+            temp_marker_count++;
+            ma.markers.push_back(addText(marker.pose.position.x, marker.pose.position.y, marker.pose.position.z, marker.scale.z, temp_marker_count, Labels[det_index]));
+            temp_marker_count++;
+        }
+    }
+
+    //while(marker_counter > temp_marker_count){
+    //    ma.markers.push_back(DeleteMarker());
+    //}
+
+    marker_counter = temp_marker_count;
 
 
 
-//calc 1-sigma (68%) depth and take min & max for box size
-//--> use x & y box size of image
 
 
 
-//    //RVIZ Visualisation - 3D Sceleton + 2d image
-//    visualization_msgs::MarkerArray ma; 
+
+
+
 //    //Iterate over all keypoints
 //    for(i=0;i<17;i++){
 //        //Don't draw nose and ears (they're very unaccurate)
@@ -154,13 +332,9 @@ void detect_in_cloud(Mat &src, const PointCloud::ConstPtr& cloud){
 //            marker.color.g = 0.686;
 //            marker.color.b = 0.843;
 //            marker.scale.x = marker.scale.y = marker.scale.z = 0.15;
-//            ma.markers.push_back(marker);
-//        }
-//
-//        
-//    }
-//    vis_pub.publish(ma);
-//}
+    
+    vis_pub.publish(ma);
+}
 
 //Callback when new pointcloud arrives
 //
@@ -208,18 +382,17 @@ int main(int argc,char ** argv){
     string model_path;
     ros::param::get("/nimbus_pose/model_path", model_path);
 
-    //MobileNetV1
-    //net = dnn::readNetFromTensorflow("model_path.c_str()");
-    //MobileNetV2
-    net = dnn::readNetFromTensorflow("/home/pi/catkin_ws/src/nimbus-perception/nimbus_detection/frozen_inference_graph_V2.pb","/home/pi/catkin_ws/src/nimbus-perception/nimbus_detection/ssd_mobilenet_v2_coco_2018_03_29.pbtxt");
+    // Load model
+    std::unique_ptr<tflite::FlatBufferModel> model = tflite::FlatBufferModel::BuildFromFile("/home/pi/catkin_ws/src/nimbus-perception/nimbus_detection/detect.tflite");
 
-    if (net.empty()){
-        cout << "init the model net error";
-        exit(-1);
-    }
+    // Build the interpreter
+    tflite::ops::builtin::BuiltinOpResolver resolver;
+    tflite::InterpreterBuilder(*model.get(), resolver)(&interpreter);
+
+    interpreter->AllocateTensors();
 
 	// Get the names
-	bool result = readCOCOLabels(model_path.c_str() + "COCO_labels.txt");
+	bool result = readCOCOLabels("/home/pi/catkin_ws/src/nimbus-perception/nimbus_detection/COCO_labels.txt");
 	if(!result)
 	{
         cout << "loading labels failed";
