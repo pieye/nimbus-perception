@@ -1,7 +1,7 @@
-# Nimbus-Pose
+# Nimbus-Segmenation
 
 ## Installation
-To use the nimbus-pose the following software must be installed on your Rasperry Pi:
+To use the nimbus-segmentation the following software must be installed on your Rasperry Pi:
   - ROS perception (tested with noetic)
   - OpenCV 4.2
   - tensorflow lite
@@ -12,6 +12,6 @@ But we offer a Raspberry Pi image which already includes everything including th
 ## Usage
 To start Nimbus-Pose use the provided launch file:
 ```
-roslaunch nimbus_pose nimbus_pose.launch
+roslaunch nimbus_segmentation nimbus_segmentation.launch
 ```
 This will also start the nimbus_3d_driver in order to capture the pointcloud.
