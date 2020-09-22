@@ -1,7 +1,7 @@
-# Nimbus-Pose
+# Nimbus-Detection
 
 ## Installation
-To use the nimbus-pose the following software must be installed on your Rasperry Pi:
+To use the nimbus-detection the following software must be installed on your Rasperry Pi:
   - ROS perception (tested with noetic)
   - OpenCV 4.2
   - tensorflow lite
