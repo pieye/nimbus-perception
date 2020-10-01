@@ -18,9 +18,7 @@ catkin_package(
 )
 
 include_directories(
-#  /home/pi/tensorflow
-   /mnt/c/Users/Bjarne/Desktop/tensorflow
-#  /usr/local/include/opencv4
+  $ENV{HOME}/tensorflow
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -30,4 +28,5 @@ add_definitions(-DEIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT)
 add_executable(nimbus_pose nimbus_pose.cpp)
 
 #target_link_libraries( nimbus_pose ${catkin_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} $ENV{HOME}/tensorflow/tensorflow/lite/tools/make/gen/rpi_armv7l/lib/libtensorflow-lite.a $ENV{HOME}/tensorflow/tensorflow/lite/tools/make/downloads/flatbuffers/build/libflatbuffers.a /lib/arm-linux-gnueabihf/libdl.so.2)
-target_link_libraries( nimbus_pose ${catkin_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} $ENV{HOME}/tensorflow/tensorflow/lite/tools/make/gen/linux_x86_64/lib/libtensorflow-lite.a $ENV{HOME}/tensorflow/tensorflow/lite/tools/make/downloads/flatbuffers/build/libflatbuffers.a)
+target_link_libraries( nimbus_pose ${catkin_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} $ENV{HOME}/tensorflow/tensorflow/lite/tools/make/gen/linux_aarch64/lib/libtensorflow-lite.a $ENV{HOME}/tensorflow/tensorflow/lite/tools/make/downloads/flatbuffers/build/libflatbuffers.a /lib/aarch64-linux-gnu/libdl.so.2)
+#target_link_libraries( nimbus_pose ${catkin_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} $ENV{HOME}/tensorflow/tensorflow/lite/tools/make/gen/linux_x86_64/lib/libtensorflow-lite.a $ENV{HOME}/tensorflow/tensorflow/lite/tools/make/downloads/flatbuffers/build/libflatbuffers.a)
