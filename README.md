@@ -1,11 +1,11 @@
 # Nimbus-Perception
 
 ## Nimbus-Perception
-![image](assets/nimbus-detection.jpg | width=48)
+<img src="assets/nimbus-detection.jpg" width="500" />
 
 ## Nimbus-Pose
-![image](assets/nimbus-pose.jpg)
+<img src="assets/nimbus-pose.jpg" width="500" />
 
 ## Nimbus-Segmentation
-![image](assets/nimbus-semantic.jpg)
+<img src="assets/nimbus-semantic.jpg" width="500" />
 
