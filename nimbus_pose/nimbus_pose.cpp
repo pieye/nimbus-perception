@@ -6,6 +6,8 @@
 #include <cv_bridge/cv_bridge.h>
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
+#include <ros/package.h>
+
 
 //OpenCV
 #include <stdio.h>
@@ -159,7 +161,6 @@ void detect_in_cloud(Mat &src, const PointCloud::ConstPtr& cloud){
                         float temp_depth = cloud->points[location_2d[i].x + IMG_WIDTH*location_2d[i].y].z;
                         for(int ii=-window_size/2;ii<window_size/2;ii++){
                             for(int jj=-window_size/2;jj<window_size/2;jj++){
-                                std::cout << cloud->points[location_2d[i].x+ii + IMG_WIDTH*location_2d[i].y+jj].z << std::endl;
                                 if(cloud->points[location_2d[i].x+ii + IMG_WIDTH*location_2d[i].y+jj].z < temp_depth)
                                     temp_depth = cloud->points[location_2d[i].x+ii + IMG_WIDTH*location_2d[i].y+jj].z;
                             }
@@ -281,9 +282,10 @@ int main(int argc,char ** argv){
 
 
     //tf lite model
-    string model_path;
-    ros::param::get("/nimbus_pose/model_path", model_path);
-    std::unique_ptr<FlatBufferModel> model = FlatBufferModel::BuildFromFile(model_path.c_str());
+    std::string path = ros::package::getPath("nimbus_pose");
+    string model_file;
+    ros::param::get("/nimbus_pose/model_file", model_file);
+    std::unique_ptr<FlatBufferModel> model = FlatBufferModel::BuildFromFile((path + "/" + model_file).c_str());
 
     //interpreter
     ops::builtin::BuiltinOpResolver resolver;

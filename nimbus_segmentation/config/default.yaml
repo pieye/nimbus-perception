@@ -1,5 +1,5 @@
 #Path to tflite model
-model_path: '/home/pi/catkin_ws/src/nimbus-perception/nimbus_segmentation/deeplabv3_257_mv_gpu.tflite'
+model_file: 'deeplabv3_257_mv_gpu.tflite'
 
 #Minimum confidence -1.0 - 1.0 (Don't go below 0.01)
 min_confidence: 0.05

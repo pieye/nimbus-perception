@@ -1,8 +1,9 @@
-#Path to tflite model
-model_path: '/home/pi/catkin_ws/src/nimbus-perception/nimbus_detection/detect.tflite'
+#Name of tflite model and label
+model_file:  'detect.tflite'
+labels_file: 'COCO_labels.txt'
 
 #Minimum confidence 0 - 1 (0.25 good default value)
-min_confidence: 0.6
+min_confidence: 0.55
 
 #confidence bounds of 3d cluster (1-sgima: only use 68% of the points arround mean for the 3d box)
-sigma: 1
+sigma: 3

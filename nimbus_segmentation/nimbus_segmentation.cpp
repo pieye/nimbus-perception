@@ -6,6 +6,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
+#include <ros/package.h>
 
 //OpenCV
 #include <stdio.h>
@@ -210,9 +211,10 @@ int main(int argc,char ** argv){
     ros::Subscriber sub = nh.subscribe<pcl::PointCloud<pcl::PointXYZI>>("/nimbus/pointcloud", 1, cloud_cb);
 
     //tf lite model
-    string model_path;
-    ros::param::get("/nimbus_segmentation/model_path", model_path);
-    std::unique_ptr<FlatBufferModel> model = FlatBufferModel::BuildFromFile(model_path.c_str());
+    std::string path = ros::package::getPath("nimbus_segmentation");
+    string model_file;
+    ros::param::get("/nimbus_segmentation/model_file", model_file);
+    std::unique_ptr<FlatBufferModel> model = FlatBufferModel::BuildFromFile((path + "/" + model_file).c_str());
 
     //interpreter
     ops::builtin::BuiltinOpResolver resolver;

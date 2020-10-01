@@ -2,7 +2,7 @@
 <!--
     <include file="$(find nimbus_3d_driver)/launch/nimbus.launch" />
 -->
-    <arg name="config_file_detection" default="/home/pi/catkin_ws/src/nimbus-perception/nimbus_detection/config/default.yaml"/>
+    <arg name="config_file_detection" default="$(find nimbus_detection)/config/default.yaml"/>
     <node 
         pkg="nimbus_detection" type="nimbus_detection" name="nimbus_detection" output="screen" required="true"> 
         <rosparam command="load" file="$(arg config_file_detection)" />

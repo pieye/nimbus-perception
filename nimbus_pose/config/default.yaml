@@ -1,5 +1,5 @@
 #Path to tflite model
-model_path: '/home/pi/catkin_ws/src/nimbus-perception/nimbus_pose/posenet_mobilenet_v1_100_257x257_multi_kpt_stripped.tflite'
+model_file: 'posenet_mobilenet_v1_100_257x257_multi_kpt_stripped.tflite'
 
 #Minimum confidence -1.0 - 1.0 (Don't go below 0.01)
 min_confidence: 0.05
