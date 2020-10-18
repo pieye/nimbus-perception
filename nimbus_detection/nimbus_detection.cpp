@@ -58,7 +58,7 @@ ros::Publisher vis_pub;
 //
 visualization_msgs::Marker DeleteMarker(){
     visualization_msgs::Marker deleteMarker;
-    if(marker_counter > 0){
+    if(marker_counter >= 0){
         deleteMarker.header.frame_id = "nimbus";
         deleteMarker.header.stamp = ros::Time();
         deleteMarker.ns = "nimbus_detection";
@@ -295,7 +295,7 @@ void detect_in_cloud(Mat &src, PointCloud cloud){
     while(marker_counter > temp_marker_count){
         ma.markers.push_back(DeleteMarker());
     }
-
+    ma.markers.push_back(DeleteMarker());
     marker_counter = temp_marker_count;
    
     vis_pub.publish(ma);
