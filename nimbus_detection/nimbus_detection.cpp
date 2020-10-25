@@ -103,6 +103,16 @@ visualization_msgs::Marker addText(float x, float y, float z, float depth, int i
 //and use x-sigma confidence bounds to approximate cluster size
 //return rviz CUBE marker
 visualization_msgs::Marker Calculate3DBoundingBox(int id, float y1, float x1, float y2, float x2, PointCloud cloud){
+    //restrict bounding boxes on the image plane (no negative pixel locations)
+    if(x1 < 0)
+        x1 = 1;
+    if(y1 < 0)
+        y1 = 1;
+    if(x2 >= IMG_WIDTH-1)
+        x2 = IMG_HEIGHT-1;
+    if(y2 >= IMG_HEIGHT-1)
+        y2 = IMG_HEIGHT-1;
+
     float sigma;
     ros::param::get("/nimbus_detection/sigma", sigma);
 
@@ -122,107 +132,51 @@ visualization_msgs::Marker Calculate3DBoundingBox(int id, float y1, float x1, fl
     marker.pose.orientation.z = 0.0;
     marker.pose.orientation.w = 1.0;
 
-    float sum_x = 0;
-    float sum_y = 0;
-    float sum_z = 0;
-
-    float var_x = 0;
-    float var_y = 0;
-    float var_z = 0;
-
-    float sd_x = 0;
-    float sd_y = 0;
-    float sd_z = 0;
-
-    float min_height = std::numeric_limits<float>::max();
-    float max_height = std::numeric_limits<float>::min();
-    float min_width  = std::numeric_limits<float>::max();
-    float max_width  = std::numeric_limits<float>::min();
-
     //Max amount of pixels
+    std::vector<float> x_distribution;
+    std::vector<float> y_distribution;
+    std::vector<float> z_distribution;
     float max = (y2-y1)*(x2-x1);
 
-    for(int i = x1; i < (x2); i++){
-        for(int j = y1; j < (y2); j++){
+    //only use every second point to speed up the computation
+    for(int i = x1; i < (x2); i=i+2){
+        for(int j = y1; j < (y2); j=j+2){
             if(isnan(cloud.points[i + IMG_WIDTH*j].x) || isnan(cloud.points[i + IMG_WIDTH*j].y) || isnan(cloud.points[i + IMG_WIDTH*j].z)){
                 max--;
             }
             else{
-                sum_x += cloud.points[i + IMG_WIDTH*j].x;
-                sum_y += cloud.points[i + IMG_WIDTH*j].y;
-                sum_z += cloud.points[i + IMG_WIDTH*j].z;
 
-                //get min and max height+width of box to limit estimated size
-                if(min_height > cloud.points[i + IMG_WIDTH*j].y)
-                    min_height = cloud.points[i + IMG_WIDTH*j].y;
-
-                if(max_height < cloud.points[i + IMG_WIDTH*j].y)
-                    max_height = cloud.points[i + IMG_WIDTH*j].y;
-                
-                if(min_width > cloud.points[i + IMG_WIDTH*j].x)
-                    min_width = cloud.points[i + IMG_WIDTH*j].x;
-
-                if(max_width < cloud.points[i + IMG_WIDTH*j].x)
-                    max_width = cloud.points[i + IMG_WIDTH*j].x;
-            }
-        }
-    }
-    //calc mean
-    float mean_x = sum_x/max;
-    float mean_y = sum_y/max;
-    float mean_z = sum_z/max;
-
-    //Max amount of pixels
-    max = (y2-y1)*(x2-x1);
-
-    //Calculate Variance of pointcloud distribution in x,y,z direction
-    for(int i = x1; i < (x2); i++){
-        for(int j = y1; j < (y2); j++){
-            if(isnan(cloud.points[i + IMG_WIDTH*j].x) || isnan(cloud.points[i + IMG_WIDTH*j].y) || isnan(cloud.points[i + IMG_WIDTH*j].z)){
-                max--;
-            }
-            else{
-                var_x += (cloud.points[i + IMG_WIDTH*j].x - mean_x) * (cloud.points[i + IMG_WIDTH*j].x - mean_x);
-                var_y += (cloud.points[i + IMG_WIDTH*j].y - mean_y) * (cloud.points[i + IMG_WIDTH*j].y - mean_y);
-                var_z += (cloud.points[i + IMG_WIDTH*j].z - mean_z) * (cloud.points[i + IMG_WIDTH*j].z - mean_z);
+                x_distribution.push_back(cloud.points[i + IMG_WIDTH*j].x);
+                y_distribution.push_back(cloud.points[i + IMG_WIDTH*j].y);
+                z_distribution.push_back(cloud.points[i + IMG_WIDTH*j].z);
             }
         }
     }
 
-    //calc variance
-    var_x /= abs(sum_x);
-    var_y /= abs(sum_y);
-    var_z /= abs(sum_z);
-   
-    if(isnan(sum_x) || isnan(sum_y) || isnan(sum_z)){
-            marker.color.a = 0.0;
-            std::cout << "NAN!" << std::endl;
-    }
-    else{
-        //bounding box center is mean of pointcloud distribution
-        marker.pose.position.x = mean_x;
-        marker.pose.position.y = mean_y;
-        marker.pose.position.z = mean_z;
-    }
+    //sort x, y and z distributions in order to find the median + peak
+    std::sort(x_distribution.begin(), x_distribution.end());
+    std::sort(y_distribution.begin(), y_distribution.end());
+    std::sort(z_distribution.begin(), z_distribution.end());
+
+    //bounding box center is median of pointcloud distribution
+    marker.pose.position.x = x_distribution[z_distribution.size()/2];
+    marker.pose.position.y = y_distribution[z_distribution.size()/2];
+    marker.pose.position.z = z_distribution[z_distribution.size()/2]; 
+
     //pieye colors
     marker.color.r = 0.196;
     marker.color.g = 0.686;
     marker.color.b = 0.843;
 
-    //calc standard deviation and use it for the bounding box size
-    //also check estimated x-sigma size against actual max in bounding box to avoid too large boxes
-    if(sqrt(var_x)*sigma > max_width-min_width)
-        marker.scale.x = max_width-min_width;
-    else
-        marker.scale.x = sqrt(var_x)*sigma;
 
-    if(sqrt(var_y)*sigma > max_height-min_height)
-        marker.scale.y = max_height-min_height;
-    else
-        marker.scale.y = sqrt(var_y)*sigma;
-
-    marker.scale.z = sqrt(var_z)*sigma;
-
+    //Take 2-sigma for x and y size
+    //1-sigma for depth (to compensate backround inside bounding box)
+    float x_threshold = 0.95;
+    float y_threshold = 0.95;
+    float z_threshold = 0.68;
+    marker.scale.x = x_distribution[x_distribution.size()*(0.5+x_threshold/2)] - x_distribution[x_distribution.size()*(0.5-x_threshold/2)];
+    marker.scale.y = y_distribution[y_distribution.size()*(0.5+y_threshold/2)] - y_distribution[y_distribution.size()*(0.5-y_threshold/2)];
+    marker.scale.z = z_distribution[z_distribution.size()*(0.5+z_threshold/2)] - z_distribution[z_distribution.size()*(0.5-z_threshold/2)];
 
     return marker;
 }
