@@ -1,7 +1,6 @@
 <launch>
-<!--
     <include file="$(find nimbus_3d_driver)/launch/nimbus.launch" />
--->
+
     <arg name="config_file_pose" default="$(find nimbus_segmentation)/config/default.yaml"/>
     <node pkg="nimbus_segmentation" type="nimbus_segmentation" name="nimbus_segmentation" output="screen" required="true"> 
         <rosparam command="load" file="$(arg config_file_pose)" />
