@@ -113,8 +113,8 @@ visualization_msgs::Marker Calculate3DBoundingBox(int id, float y1, float x1, fl
     if(y2 >= IMG_HEIGHT-1)
         y2 = IMG_HEIGHT-1;
 
-    float sigma;
-    ros::param::get("/nimbus_detection/sigma", sigma);
+    float box_size;
+    ros::param::get("/nimbus_detection/box_size", box_size);
 
     visualization_msgs::Marker marker;
     marker.header.frame_id = "nimbus";
@@ -169,11 +169,10 @@ visualization_msgs::Marker Calculate3DBoundingBox(int id, float y1, float x1, fl
     marker.color.b = 0.843;
 
 
-    //Take 2-sigma for x and y size
-    //1-sigma for depth (to compensate backround inside bounding box)
-    float x_threshold = 0.95;
-    float y_threshold = 0.95;
-    float z_threshold = 0.68;
+    //x and y size threshold
+    float x_threshold = box_size;
+    float y_threshold = box_size;
+    float z_threshold = box_size/2;
     marker.scale.x = x_distribution[x_distribution.size()*(0.5+x_threshold/2)] - x_distribution[x_distribution.size()*(0.5-x_threshold/2)];
     marker.scale.y = y_distribution[y_distribution.size()*(0.5+y_threshold/2)] - y_distribution[y_distribution.size()*(0.5-y_threshold/2)];
     marker.scale.z = z_distribution[z_distribution.size()*(0.5+z_threshold/2)] - z_distribution[z_distribution.size()*(0.5-z_threshold/2)];
